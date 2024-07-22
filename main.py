@@ -1,5 +1,5 @@
-from src.orderbook.order import Order, OrderType, BidOrAsk, Exchange
-from src.orderbook.orderbook import OrderBook
+from orderbook.order import Order, OrderType, BidOrAsk, Exchange
+from orderbook.orderbook import OrderBook
 
 if __name__ == "__main__":
     order_book = OrderBook()

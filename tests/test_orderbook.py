@@ -1,6 +1,6 @@
 import pytest
-from src.orderbook.order import Order, OrderType, BidOrAsk, Exchange
-from src.orderbook.orderbook import OrderBook
+from orderbook.order import Order, OrderType, BidOrAsk, Exchange
+from orderbook.orderbook import OrderBook
 
 def test_add_order_new_price():
     """add a new limit order with a new price"""

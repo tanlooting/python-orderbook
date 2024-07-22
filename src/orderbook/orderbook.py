@@ -1,16 +1,16 @@
 from collections import deque
-from typing import Deque, Dict
-from src.orderbook.order import Order, OrderType, BidOrAsk
+from typing import Deque, Dict, Optional, Any
+from orderbook.order import Order, OrderType, BidOrAsk
 from sortedcontainers import SortedDict
-from termcolor import colored, cprint
+from termcolor import cprint
 
 class OrderBook:
     def __init__(self):
         self.bids: SortedDict[float, Deque] = SortedDict() 
         self.asks: SortedDict[float, Deque] = SortedDict()
-        self.id_to_price: Dict = dict() # for ease of finding price
-        self.pending_market_orders_bid: Deque = deque()
-        self.pending_market_orders_ask: Deque = deque()
+        self.id_to_price: Dict[str, float] = dict() # for ease of finding price
+        self.pending_market_orders_bid: Deque[Order] = deque()
+        self.pending_market_orders_ask: Deque[Order] = deque()
         self.trades = list() # unused
 
     def process_order(self, order: Order):
@@ -197,14 +197,14 @@ class OrderBook:
         
             
     
-    def get_best_bid(self) -> float:
+    def get_best_bid(self) -> Any:
         return self.bids.peekitem()[0]
     
-    def get_best_ask(self) -> float:
+    def get_best_ask(self) -> Any:
         return self.asks.peekitem(0)[0]
     
     def get_L2_orderbook(self, 
-                         disp_levels: int = None):
+                         disp_levels: Optional[int] = None):
         """print aggregated orderbook to console
         price-> quantity
         """

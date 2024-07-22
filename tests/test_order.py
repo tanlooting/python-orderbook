@@ -1,5 +1,5 @@
 import pytest
-from src.orderbook.order import Order, OrderType, BidOrAsk, Exchange
+from orderbook.order import Order, OrderType, BidOrAsk, Exchange
 
 def test_order_generation():
     # Test that an order is created with a price and quantity

@@ -1,5 +1,6 @@
 from enum import Enum, auto
 from dataclasses import dataclass
+from typing import Optional
 
 class OrderType(Enum):
     LIMIT = auto()
@@ -33,11 +34,11 @@ class Order:
     quantity: float # Decimals
     bid_or_ask: BidOrAsk
     exchange: Exchange
-    symbol: str = None
-    price: float = None # Decimals
-    order_id: str = None
-    tif: TimeInForce = None # Time in Force (GTC, IOC, FOK)
-    order_status: str = None
+    symbol: Optional[str] = None
+    price: Optional[float] = None # Decimals
+    order_id: Optional[str] = None
+    tif: Optional[TimeInForce] = None # Time in Force (GTC, IOC, FOK)
+    order_status: Optional[str] = None
 
     def __post_init__(self):
         if self.order_type == OrderType.LIMIT and self.price is None:
