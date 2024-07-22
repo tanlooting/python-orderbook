@@ -2,13 +2,15 @@ from collections import deque
 from typing import Deque, Dict
 from src.orderbook.order import Order, OrderType, BidOrAsk
 from sortedcontainers import SortedDict
+from termcolor import colored, cprint
 
 class OrderBook:
     def __init__(self):
         self.bids: SortedDict[float, Deque] = SortedDict() 
         self.asks: SortedDict[float, Deque] = SortedDict()
         self.id_to_price: Dict = dict() # for ease of finding price
-        self.pending_market_orders: Deque = deque()
+        self.pending_market_orders_bid: Deque = deque()
+        self.pending_market_orders_ask: Deque = deque()
         self.trades = list() # unused
 
     def process_order(self, order: Order):
@@ -79,8 +81,31 @@ class OrderBook:
             self.add_order(order)
 
     def process_market_order(self, order: Order):
-        # if can match
+
         quantity_remaining = order.quantity 
+        # match against other market orders if no limit orders available
+        if order.bid_or_ask == BidOrAsk.BID and not self.asks:
+            while self.pending_market_orders_ask:
+                o = self.pending_market_orders_ask[0]
+                if quantity_remaining > o.quantity:
+                    quantity_remaining -= o.quantity
+                    self.pending_market_orders_ask.popleft()
+                elif quantity_remaining <= o.quantity:
+                    o.quantity -= quantity_remaining
+                    quantity_remaining = 0
+                    break
+        elif order.bid_or_ask == BidOrAsk.ASK and not self.bids:
+            while self.pending_market_orders_bid:
+                o = self.pending_market_orders_bid[0]
+                if quantity_remaining > o.quantity:
+                    quantity_remaining -= o.quantity
+                    self.pending_market_orders_bid.popleft()
+                elif quantity_remaining <= o.quantity:
+                    o.quantity -= quantity_remaining
+                    quantity_remaining = 0
+                    break
+
+        # if can match to limit orders
         if order.bid_or_ask == BidOrAsk.BID:
             while quantity_remaining > 0 and self.asks:
                 price = self.get_best_ask()
@@ -95,8 +120,6 @@ class OrderBook:
                     elif quantity_remaining <= o.quantity:
                         o.quantity -= quantity_remaining
                         quantity_remaining = 0
-
-                    if quantity_remaining == 0:
                         break
                 if len(self.asks[price]) == 0:
                     self.asks.pop(price)
@@ -116,8 +139,6 @@ class OrderBook:
                     elif quantity_remaining <= o.quantity:
                         o.quantity -= quantity_remaining
                         quantity_remaining = 0
-
-                    if quantity_remaining == 0:
                         break
                 if len(self.bids[price]) == 0:
                     self.bids.pop(price)
@@ -126,7 +147,10 @@ class OrderBook:
         # next limit order that gets added will fulfill the remaining market orders
         if quantity_remaining > 0:
             order.quantity = quantity_remaining
-            self.pending_market_orders.append(order)
+            if order.bid_or_ask == BidOrAsk.BID:
+                self.pending_market_orders_bid.append(order)
+            elif order.bid_or_ask == BidOrAsk.ASK:
+                self.pending_market_orders_ask.append(order)
 
 
     def cancel_order(self, order_id: str):
@@ -164,18 +188,23 @@ class OrderBook:
                 self.asks[order.price] = deque([order])
         
         # once added order, check if there are any pending market orders
-        if self.pending_market_orders:
-            market_order = self.pending_market_orders.popleft()
+        if order.bid_or_ask == BidOrAsk.BID and self.pending_market_orders_ask:
+            market_order = self.pending_market_orders_ask.popleft()
             self.process_order(market_order)
+        elif order.bid_or_ask == BidOrAsk.ASK and self.pending_market_orders_bid:
+            market_order = self.pending_market_orders_bid.popleft()
+            self.process_order(market_order)
+        
             
     
-    def get_best_bid(self):
+    def get_best_bid(self) -> float:
         return self.bids.peekitem()[0]
     
-    def get_best_ask(self):
+    def get_best_ask(self) -> float:
         return self.asks.peekitem(0)[0]
     
-    def get_L2_orderbook(self):
+    def get_L2_orderbook(self, 
+                         disp_levels: int = None):
         """print aggregated orderbook to console
         price-> quantity
         """
@@ -185,9 +214,13 @@ class OrderBook:
             self.agg_asks[price] = sum([o.quantity for o in order_deque])
         for price, order_deque in self.bids.items():
             self.agg_bids[price] = sum([o.quantity for o in order_deque])
-
-        print(list(self.agg_asks.items()))
-        print("-------------------------")
-        print([(k, self.agg_bids[k]) for k in reversed(self.agg_bids)])
+        
+        
+        cprint("-------ASKS-------\n", "red", attrs = ["bold"])
+        for k in reversed(self.agg_asks.keys()):
+            print(f"Price: {k}, Quantity: {self.agg_asks[k]}\n")
+        cprint("-------BIDS-------\n", "green", attrs = ["bold"])
+        for k in reversed(self.agg_bids.keys()):
+            print(f"Price: {k}, Quantity: {self.agg_bids[k]}\n")
 
         

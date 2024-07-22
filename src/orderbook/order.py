@@ -12,6 +12,19 @@ class BidOrAsk(Enum):
 class Exchange(Enum):
     BINANCE = auto()
     LUNO = auto()
+
+class TimeInForce(Enum):
+    """Not implemented in this simplified version"""
+    GTC = auto()
+    IOC = auto()
+    FOK = auto()
+
+class OrderStatus(Enum):
+    FILLED = auto()
+    PARTIALLY_FILLED = auto()
+    CANCELLED = auto()
+    ERROR = auto()
+
 # convert to Decimals
 @dataclass
 class Order:
@@ -20,9 +33,27 @@ class Order:
     quantity: float # Decimals
     bid_or_ask: BidOrAsk
     exchange: Exchange
+    symbol: str = None
     price: float = None # Decimals
     order_id: str = None
+    tif: TimeInForce = None # Time in Force (GTC, IOC, FOK)
+    order_status: str = None
 
     def __post_init__(self):
         if self.order_type == OrderType.LIMIT and self.price is None:
             raise ValueError("Limit orders require a price")
+@dataclass
+class Fill:
+    """Not implemented in this simplified version"""
+    order_id: str
+    fill_id: str
+    fill_time: float
+    fill_price: float
+    fill_size: float
+    
+
+@dataclass
+class Trade:
+    """Not implemented in this simplified version"""
+    order: Order
+    fill: Fill

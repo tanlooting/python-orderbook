@@ -12,7 +12,7 @@ def test_add_order_new_price():
                   quantity = 10, 
                   bid_or_ask=BidOrAsk.BID, 
                   exchange = Exchange.BINANCE)
-    order_book.add_order(order)
+    order_book.process_order(order)
     print(order_book.bids[100.5])
     assert len(order_book.bids) == 1
     assert len(order_book.asks) == 0
@@ -33,8 +33,8 @@ def test_get_best_bid():
                   quantity = 5, 
                   bid_or_ask=BidOrAsk.BID, 
                   exchange = Exchange.BINANCE)
-    order_book.add_order(order_1)
-    order_book.add_order(order_2)
+    order_book.process_order(order_1)
+    order_book.process_order(order_2)
     assert len(order_book.bids) == 2
     assert order_book.get_best_bid() == 101
 
@@ -54,8 +54,8 @@ def test_get_best_asks():
                   quantity = 5, 
                   bid_or_ask=BidOrAsk.ASK, 
                   exchange = Exchange.BINANCE)
-    order_book.add_order(order_1)
-    order_book.add_order(order_2)
+    order_book.process_order(order_1)
+    order_book.process_order(order_2)
     assert len(order_book.asks) == 2
     assert order_book.get_best_ask() == 100
 
@@ -76,8 +76,8 @@ def test_cancel_order():
                   quantity = 5, 
                   bid_or_ask=BidOrAsk.ASK, 
                   exchange = Exchange.BINANCE)
-    order_book.add_order(order_1)
-    order_book.add_order(order_2)
+    order_book.process_order(order_1)
+    order_book.process_order(order_2)
     order_book.cancel_order("a1")
     assert len(order_book.asks) == 1
     assert order_book.get_best_ask() == 101
@@ -111,9 +111,9 @@ def test_market_order_complete_fill():
                   quantity = 20, 
                   bid_or_ask=BidOrAsk.BID, 
                   exchange = Exchange.BINANCE)
-    order_book.add_order(order_1)
-    order_book.add_order(order_2)
-    order_book.add_order(order_3)
+    order_book.process_order(order_1)
+    order_book.process_order(order_2)
+    order_book.process_order(order_3)
     order_book.process_order(market_order)
     assert len(order_book.asks) == 1
     assert order_book.get_best_ask() == 101
@@ -148,13 +148,13 @@ def test_market_order_partial_fill():
                   quantity = 30, 
                   bid_or_ask=BidOrAsk.BID, 
                   exchange = Exchange.BINANCE)
-    order_book.add_order(order_1)
-    order_book.add_order(order_2)
-    order_book.add_order(order_3)
+    order_book.process_order(order_1)
+    order_book.process_order(order_2)
+    order_book.process_order(order_3)
     order_book.process_order(market_order)
     assert len(order_book.asks) == 0
-    assert len(order_book.pending_market_orders) == 1
-    assert order_book.pending_market_orders[0].quantity == 5
+    assert len(order_book.pending_market_orders_bid) == 1
+    assert order_book.pending_market_orders_bid[0].quantity == 5
     
 
 def test_market_order_empty_book_and_add_new_limit():
@@ -170,7 +170,7 @@ def test_market_order_empty_book_and_add_new_limit():
                   bid_or_ask=BidOrAsk.BID, 
                   exchange = Exchange.BINANCE)
     order_book.process_order(market_order)
-    assert len(order_book.pending_market_orders) == 1
+    assert len(order_book.pending_market_orders_bid) == 1
 
     # after limit order is added, the market order should continue to be filled
     order_1 = Order(timestamp = 1625651654, 
@@ -180,10 +180,39 @@ def test_market_order_empty_book_and_add_new_limit():
                   quantity = 10, 
                   bid_or_ask=BidOrAsk.ASK, 
                   exchange = Exchange.BINANCE)
-    order_book.add_order(order_1)
+    order_book.process_order(order_1)
     assert len(order_book.asks) == 0
-    assert len(order_book.pending_market_orders) == 1
-    assert order_book.pending_market_orders[0].quantity == 20
+    assert len(order_book.pending_market_orders_bid) == 1
+    assert order_book.pending_market_orders_bid[0].quantity == 20
+
+def test_market_order_fill_market_order():
+    """
+    when book is empty, market order sits in pending orders until the next order comes in.
+    if opposite order coming in is market order, it will be filled with the market order.
+    """
+    order_book = OrderBook()
+    market_order_1 = Order(timestamp = 1625651654,
+                  order_id = "a1", 
+                  order_type= OrderType.MARKET, 
+                  quantity = 5, 
+                  bid_or_ask=BidOrAsk.BID, 
+                  exchange = Exchange.BINANCE)
+    order_book.process_order(market_order_1)
+    assert len(order_book.pending_market_orders_bid) == 1
+
+    # after market is added, the market order should continue to be filled
+    market_order_2 = Order(timestamp = 1625651654, 
+                  order_id = "a2", 
+                  order_type= OrderType.MARKET, 
+                  quantity = 10, 
+                  bid_or_ask=BidOrAsk.ASK, 
+                  exchange = Exchange.BINANCE)
+    order_book.process_order(market_order_2)
+    
+    assert len(order_book.pending_market_orders_bid) == 0
+    assert len(order_book.pending_market_orders_ask) == 1
+    assert order_book.pending_market_orders_ask[0].quantity == 5
+
 
 def test_add_limit_orders():
     """without crossing spread"""
